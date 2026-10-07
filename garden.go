@@ -23,6 +23,7 @@ type Note struct {
 	Assets      []string       // vault paths of images and files the note uses
 	Broken      []string       // link targets that match no note or file
 	HasCode     bool           // contains a code block
+	Generated   bool           // made by garden (the index page), not read from the vault
 }
 
 // Link is an edge from one note to another, with the text around it.
@@ -181,6 +182,22 @@ func Load(ctx context.Context, config *Config) (*Garden, error) {
 	if g.Nav, err = buildNav(v, titles); err != nil {
 		return nil, err
 	}
+
+	switch {
+	case cfg.Home != "":
+		if _, ok := g.byID[cfg.Home]; !ok {
+			return nil, fmt.Errorf("garden: home note %q not found; set `home` to a published note's path without .md, or leave it blank to generate an index page", cfg.Home)
+		}
+	case g.byID["index"] != nil:
+		cfg.Home = "index"
+	default:
+		n := generateIndex(g, "index")
+		cfg.Home = n.ID
+		g.byID[n.ID] = n
+		g.Notes = append(g.Notes, n)
+		sort.Slice(g.Notes, func(i, j int) bool { return g.Notes[i].ID < g.Notes[j].ID })
+	}
+	phase("index")
 	return g, nil
 }
 

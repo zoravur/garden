@@ -140,6 +140,7 @@ func (g *Garden) Write(ctx context.Context, out string) (*Stats, error) {
 		Back []jsonBacklink `json:"b,omitempty"`
 		Code bool           `json:"code,omitempty"`
 		Date string         `json:"d,omitempty"`
+		Gen  bool           `json:"g,omitempty"`
 	}
 	shards := make([]map[string]*jsonEntry, nShards)
 	for i := range shards {
@@ -159,13 +160,10 @@ func (g *Garden) Write(ctx context.Context, out string) (*Stats, error) {
 			}
 			back = append(back, jb)
 		}
-		shards[s][n.ID] = &jsonEntry{HTML: html(n), Back: back, Code: n.HasCode, Date: n.Date}
+		shards[s][n.ID] = &jsonEntry{HTML: html(n), Back: back, Code: n.HasCode, Date: n.Date, Gen: n.Generated}
 		index[n.ID] = [4]any{n.Title, s, n.Excerpt, len(back)}
 	}
 	home := cfg.Home
-	if _, ok := g.byID[home]; !ok && len(g.Notes) > 0 {
-		home = g.Notes[0].ID
-	}
 	if err := parallel(ctx, cfg.Workers, nShards, func(i int) error {
 		b, err := json.Marshal(shards[i])
 		if err != nil {
@@ -180,6 +178,7 @@ func (g *Garden) Write(ctx context.Context, out string) (*Stats, error) {
 	ib, err := json.Marshal(map[string]any{
 		"title": cfg.Title, "description": cfg.Description, "home": home,
 		"shards": nShards, "notes": index, "nav": g.Nav, "source": cfg.SourceURL,
+		"generated_home": g.byID[home] != nil && g.byID[home].Generated,
 	})
 	if err != nil {
 		return nil, err

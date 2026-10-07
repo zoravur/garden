@@ -188,6 +188,20 @@ details.admonition > summary { cursor: pointer; }
 .hljs-title, .hljs-section, .hljs-name { color: var(--ink); font-weight: 600; }
 .hljs-meta { color: var(--quote); }
 
+/* generated index page */
+.note .index-count { font: 400 12.5px var(--f-ui); color: var(--ink-soft); letter-spacing: .03em; margin-left: 4px; font-variant-numeric: tabular-nums; }
+.note .index-excerpt { display: block; margin-top: 2px; font-size: 14.5px; line-height: 1.5; color: var(--ink-soft); }
+.note .index-hubs { list-style: none; padding-left: 0; }
+.note .index-hubs li { margin: 0 0 .9em; }
+.note .index-tree { list-style: none; padding-left: 1.1em; margin: 0; }
+.note > .index-tree { padding-left: 0; }
+.note .index-tree li { margin: .15em 0; }
+.note .index-tree summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 4px; }
+.note .index-tree summary::-webkit-details-marker { display: none; }
+.note .index-tree summary::before { content: "▸"; font-size: 11px; color: var(--ink-soft); width: 12px; flex: none; transition: transform .15s; }
+.note .index-tree details[open] > summary::before { transform: rotate(90deg); }
+.note .index-tree li:not(:has(details)) { padding-left: 16px; }
+
 /* ---------- backlinks ---------- */
 .backlinks { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--rule); }
 .backlinks h2 { margin: 0 0 12px; font: 600 13px var(--f-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }

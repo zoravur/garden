@@ -3,6 +3,5 @@ title: My Garden
 description: Working notes, linked together.
 vault: vault
 out: dist
-home: index
 nav: folders
 # public_only: true      # publish only notes with `public: true` in frontmatter

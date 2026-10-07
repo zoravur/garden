@@ -172,3 +172,53 @@ func TestLoadHonoursCancellation(t *testing.T) {
 		t.Error("expected an error from a cancelled context")
 	}
 }
+
+func TestHomeIsGeneratedWhenBlankAndNoIndex(t *testing.T) {
+	fsys := fstest.MapFS{
+		"Hub.md":          file("The centre."),
+		"a.md":            file("See [[Hub]]."),
+		"b.md":            file("See [[Hub]] and [[a]]."),
+		"c.md":            file("See [[Hub]], [[a]] and [[b]]."),
+		"projects/one.md": file("Part of [[Hub]]."),
+	}
+	g := load(t, Config{FS: fsys, Title: "My Garden"})
+	home, ok := g.Note(g.Config.Home)
+	if !ok || !home.Generated || home.ID != "index" || home.Title != "My Garden" {
+		t.Fatalf("expected a generated index, got %+v", home)
+	}
+	for _, want := range []string{`id="most-linked"`, `data-id="Hub"`, `4 links`, `id="all-notes"`, `data-id="projects/one"`} {
+		if !strings.Contains(home.HTML, want) {
+			t.Errorf("index is missing %q:\n%s", want, home.HTML)
+		}
+	}
+	if len(home.Links) != 0 {
+		t.Error("the generated index must not add backlinks to every note")
+	}
+	for _, b := range g.Backlinks("Hub") {
+		if b.Source == "index" {
+			t.Error("Hub lists the generated index as a backlink")
+		}
+	}
+
+	// A root index.md is used as-is when home is blank.
+	fsys["index.md"] = file("# Welcome\n\nHand-written.")
+	g = load(t, Config{FS: fsys})
+	if n, _ := g.Note(g.Config.Home); n.Generated || n.Title != "Welcome" {
+		t.Errorf("blank home should use index.md, got %+v", n)
+	}
+
+	// An explicit home that doesn't exist is an error, not a silent fallback.
+	if _, err := Load(context.Background(), &Config{FS: fsys, Home: "nope"}); err == nil || !strings.Contains(err.Error(), `"nope"`) {
+		t.Errorf("expected a missing-home error, got %v", err)
+	}
+}
+
+func TestEmptyVaultStillHasAHomePage(t *testing.T) {
+	g := load(t, Config{FS: fstest.MapFS{}})
+	if len(g.Notes) != 1 || !g.Notes[0].Generated {
+		t.Fatalf("notes = %+v", g.Notes)
+	}
+	if _, err := g.Write(context.Background(), t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+}

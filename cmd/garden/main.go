@@ -99,6 +99,9 @@ func runBuild(ctx context.Context, args []string) error {
 		st.Notes, st.Links, st.Broken, st.AssetsCopied, st.AssetsSkipped)
 	fmt.Printf("%d files written, %d unchanged -> %s in %v\n",
 		st.Written, st.Unchanged, g.Config.Out, st.Took.Round(time.Millisecond))
+	if home, ok := g.Note(g.Config.Home); ok && home.Generated {
+		fmt.Println("no index.md in the vault, so the home page is a generated index (set `home` to choose a note)")
+	}
 	if st.Broken > 0 && *report == "" {
 		fmt.Println("run with -report broken.txt to list broken links")
 	}
@@ -179,8 +182,8 @@ const starterConfig = `title: My Garden
 description: Working notes, linked together.
 vault: vault
 out: dist
-home: index
 nav: folders
+# home: index          # note to open first; blank uses index.md, or generates an index page
 # public_only: true   # publish only notes with "public: true" in their frontmatter
 `
 

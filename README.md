@@ -44,7 +44,7 @@ title: My Garden
 description: Working notes, linked together.
 vault: vault                  # folder of .md files
 out: dist
-home: index                   # note opened first (its path without .md)
+home: ""                      # note opened first (path without .md); blank = index.md, or a generated index
 nav: folders                  # contents tree from folders, or mkdocs:path/to/mkdocs.yml
 exclude: [templates/**, "*.excalidraw.md"]
 public_only: false            # true: publish only notes with `public: true`
@@ -56,6 +56,8 @@ max_asset_mb: 0               # skip larger files (0 = no limit)...
 asset_fallback_url: ""        # ...and link them from here instead
 theme: theme                  # folder of overrides (garden.css, garden.js, index.html, note.html)
 ```
+
+If `home` is blank and the vault has no `index.md` at its root, which is common in Obsidian vaults, garden generates an index page. It lists the ten most-linked notes with their opening lines, followed by the whole contents tree. The generated page doesn't appear in any note's backlinks. If `home` names a note that doesn't exist, the build stops with an error.
 
 With `public_only: true`, private notes never reach the output. A link to a private note becomes plain text, so neither the note's name nor its path appears anywhere on the site.
 

@@ -53,7 +53,7 @@
     const meta = [];
     if (entry.d) meta.push(`<span>${esc(formatDate(entry.d))}</span>`);
     if (id.includes("/")) meta.push(`<span>${esc(id.split("/").slice(0, -1).join(" / "))}</span>`);
-    if (index.source) meta.push(`<a href="${esc(index.source + id + ".md")}" target="_blank" rel="noopener">Source ↗</a>`);
+    if (index.source && !entry.g) meta.push(`<a href="${esc(index.source + id + ".md")}" target="_blank" rel="noopener">Source ↗</a>`);
     const back = entry.b || [];
     const backHTML = back.length
       ? back.map((b) => `<a class="backlink" href="notes/${esc(b.s)}.html" data-id="${esc(b.s)}">
@@ -353,7 +353,7 @@
       $("#loading").textContent = "Couldn't load the notes index. Reload the page to try again.";
       return;
     }
-    const count = Object.keys(index.notes).length;
+    const count = Object.keys(index.notes).length - (index.generated_home ? 1 : 0);
     $("#stats").textContent = `${count.toLocaleString()} notes`;
     $("#site-title").addEventListener("click", (e) => { e.preventDefault(); stack = [{ id: index.home }]; render(0); });
     navHTML = index.nav && index.nav.length ? navTree(index.nav) : "";

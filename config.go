@@ -32,7 +32,9 @@ type Config struct {
 	Out string `yaml:"out"`
 
 	// Home is the ID of the note opened first (its path without ".md").
-	// Default "index".
+	// When blank, a note at the vault root named index.md is used if there
+	// is one; otherwise an index page is generated: the most-linked notes
+	// and a contents tree. When set, the note must exist.
 	Home string `yaml:"home"`
 
 	// Exclude lists vault-relative patterns to skip. "dir/**" skips a whole
@@ -123,9 +125,6 @@ func (c Config) normalized() (*Config, error) {
 	}
 	if c.Title == "" {
 		c.Title = "Notes"
-	}
-	if c.Home == "" {
-		c.Home = "index"
 	}
 	if c.Nav == "" {
 		c.Nav = "folders"
