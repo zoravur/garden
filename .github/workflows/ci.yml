@@ -7,9 +7,15 @@ on:
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
-        go: ["1.22", "stable"]
         os: [ubuntu-latest, macos-latest, windows-latest]
+        go: [stable]
+        include:
+          # Oldest supported Go. Linux only: Go 1.22 binaries don't load on
+          # current macOS runners (dyld: missing LC_UUID).
+          - os: ubuntu-latest
+            go: "1.22"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
