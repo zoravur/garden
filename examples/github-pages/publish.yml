@@ -1,0 +1,39 @@
+# Copy this file to .github/workflows/publish.yml in your notes repo, next
+# to your garden.yaml. Then turn on Settings -> Pages -> Source: GitHub Actions.
+# Every push to main rebuilds the garden and publishes it to GitHub Pages.
+name: Publish garden
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go run github.com/zoravur/garden/cmd/garden@latest build -c garden.yaml -o dist
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

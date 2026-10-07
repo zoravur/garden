@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{.Title}}</title>
+<meta name="description" content="{{.Description}}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap">
+<link rel="stylesheet" href="garden.css">
+</head>
+<body>
+<div class="app" id="app">
+  <header class="bar">
+    <button class="bar-btn" id="contents-btn" type="button" aria-controls="drawer" aria-expanded="false">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M2 3.5h12M2 8h12M2 12.5h8" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+      <span>Contents</span>
+    </button>
+    <a class="bar-title" id="site-title" href="index.html">{{.Title}}</a>
+    <span class="bar-stats" id="stats"></span>
+  </header>
+
+  <aside class="drawer" id="drawer" hidden>
+    <div class="drawer-head">
+      <label class="sr-only" for="filter">Find a note by title</label>
+      <input id="filter" type="search" placeholder="Find a note…  ( / )" autocomplete="off" spellcheck="false">
+    </div>
+    <nav class="drawer-body" id="nav" aria-label="Contents"></nav>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <main class="panes" id="panes" aria-live="polite">
+    <div class="loading" id="loading">Loading notes…</div>
+  </main>
+  <div class="preview" id="preview" role="tooltip" hidden></div>
+</div>
+<noscript><p class="noscript">This garden needs JavaScript for the stacked view. Every note is also a plain page under <a href="notes/">notes/</a>.</p></noscript>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="garden.js"></script>
+</body>
+</html>

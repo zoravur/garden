@@ -1,0 +1,14 @@
+# Lyz's Blue Book (https://github.com/lyz-code/blue-book), CC0.
+# Clone it next to this file:  git clone --depth 1 https://github.com/lyz-code/blue-book
+title: The Blue Book
+description: Lyz's personal digital garden, rendered as stacked notes.
+vault: blue-book/docs
+out: dist
+home: index
+nav: mkdocs:blue-book/mkdocs.yml
+site_prefix: /blue-book/
+heading_shift: 1          # mkdocs toc baselevel: 2 — "# X" is a section, not a page title
+exclude:
+  - newsletter/**         # auto-generated changelog; would swamp every backlink list
+  - stylesheets/**
+source_url: https://github.com/lyz-code/blue-book/blob/main/docs/

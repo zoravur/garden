@@ -1,0 +1,15 @@
+# Same vault, built for a size-capped host (a Claude artifact demo):
+# no per-note static pages, and files over the host's 15 MB cap left out.
+title: The Blue Book
+description: Lyz's personal digital garden, rendered as stacked notes.
+vault: blue-book/docs
+out: dist-artifact
+home: index
+nav: mkdocs:blue-book/mkdocs.yml
+site_prefix: /blue-book/
+heading_shift: 1
+exclude: [newsletter/**, stylesheets/**]
+source_url: https://github.com/lyz-code/blue-book/blob/main/docs/
+static_pages: false
+max_asset_mb: 14
+asset_fallback_url: https://lyz-code.github.io/blue-book/

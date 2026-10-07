@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<base href="{{.Base}}">
+<title>{{.Title}} · {{.Site}}</title>
+<meta name="description" content="{{.Excerpt}}">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap">
+<link rel="stylesheet" href="garden.css">
+</head>
+<body class="static-page">
+<header class="bar">
+  <a class="bar-btn" href="index.html#{{stackHash .ID}}">Open in stacked view</a>
+  <a class="bar-title" href="index.html">{{.Site}}</a>
+</header>
+<main class="static-wrap">
+  <h1 class="pane-title">{{.Title}}</h1>
+  <article class="note">{{.Body}}</article>
+  <section class="backlinks">
+    <h2>Links to this note</h2>
+    {{range .Back}}<a class="backlink" href="{{href .Source}}"><span class="backlink-title">{{title $.Titles .Source}}</span>{{range .Refs}}<span class="backlink-ref">{{.Context}}</span>{{end}}</a>
+    {{else}}<p class="backlinks-none">No notes link here yet.</p>{{end}}
+  </section>
+</main>
+</body>
+</html>
