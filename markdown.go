@@ -119,13 +119,22 @@ func renderNote(v *vault, id string, src []byte) (*Note, error) {
 		return ast.WalkContinue, nil
 	})
 
+	// Links to unpublished notes keep their text, wrapped so themes can
+	// style them, but lose the target: nothing names the private note.
+	raw := func(h string) *ast.String {
+		str := ast.NewString([]byte(h))
+		str.SetCode(true) // written verbatim, unescaped
+		return str
+	}
 	for _, l := range unlink {
 		parent := l.Parent()
+		parent.InsertBefore(parent, l, raw(`<span class="private" title="Not published">`))
 		for c := l.FirstChild(); c != nil; {
 			next := c.NextSibling()
 			parent.InsertBefore(parent, l, c)
 			c = next
 		}
+		parent.InsertBefore(parent, l, raw(`</span>`))
 		parent.RemoveChild(parent, l)
 	}
 

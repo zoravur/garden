@@ -95,11 +95,11 @@ func TestPublicOnlyHidesPrivateNotes(t *testing.T) {
 		t.Fatalf("published %d notes, want 2", len(g.Notes))
 	}
 	home, _ := g.Note("index")
-	if strings.Contains(home.HTML, "Secret plan.html") || strings.Contains(home.HTML, `title="`) {
+	if strings.Contains(home.HTML, "Secret plan.html") || strings.Contains(home.HTML, "Secret%20plan") {
 		t.Errorf("a link to a private note must not reveal it: %s", home.HTML)
 	}
-	if !strings.Contains(home.HTML, "Secret plan") {
-		t.Error("the link text should remain as plain text")
+	if !strings.Contains(home.HTML, `<span class="private" title="Not published">Secret plan</span>`) {
+		t.Errorf("the link text should remain, marked private: %s", home.HTML)
 	}
 	if len(g.Broken) != 0 {
 		t.Errorf("private links are not broken links: %v", g.Broken)
@@ -220,5 +220,38 @@ func TestEmptyVaultStillHasAHomePage(t *testing.T) {
 	}
 	if _, err := g.Write(context.Background(), t.TempDir()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestStyleAndCustomCSSAreLayeredAfterTheTheme(t *testing.T) {
+	dir := t.TempDir()
+	custom := filepath.Join(dir, "mine.css")
+	if err := os.WriteFile(custom, []byte(":root{--accent:green}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(dir, "dist")
+	cfg := Config{FS: testVault(), Style: "wiki", CSS: []string{custom}}
+	g := load(t, cfg)
+	if _, err := g.Write(context.Background(), out); err != nil {
+		t.Fatal(err)
+	}
+	shell, _ := os.ReadFile(filepath.Join(out, "index.html"))
+	s := string(shell)
+	base, style, mine := strings.Index(s, `href="garden.css"`), strings.Index(s, `href="css/style-wiki.css"`), strings.Index(s, `href="css/custom-1-mine.css"`)
+	if base < 0 || style < base || mine < style {
+		t.Errorf("stylesheets missing or out of order:\n%s", s)
+	}
+	for _, f := range []string{"css/style-wiki.css", "css/custom-1-mine.css"} {
+		if _, err := os.Stat(filepath.Join(out, f)); err != nil {
+			t.Errorf("missing %s", f)
+		}
+	}
+	page, _ := os.ReadFile(filepath.Join(out, "notes/ideas/backlinks.html"))
+	if !strings.Contains(string(page), `href="css/style-wiki.css"`) {
+		t.Error("static note pages should get the same stylesheets")
+	}
+
+	if _, err := Load(context.Background(), &Config{FS: testVault(), Style: "nope"}); err == nil || !strings.Contains(err.Error(), "wiki") {
+		t.Errorf("unknown style should list the built-in ones, got %v", err)
 	}
 }

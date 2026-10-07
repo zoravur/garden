@@ -180,7 +180,11 @@
 
   function markOpenLinks() {
     const open = new Set(stack.map((p) => p.id));
-    panesEl.querySelectorAll("a.internal").forEach((a) => a.classList.toggle("is-open", open.has(a.dataset.id)));
+    // A note's links to its own sections don't count as "open".
+    panesEl.querySelectorAll("a.internal").forEach((a) => {
+      const own = a.closest(".pane")?.dataset.id;
+      a.classList.toggle("is-open", open.has(a.dataset.id) && a.dataset.id !== own);
+    });
     navEl.querySelectorAll(".nav-link").forEach((a) => a.classList.toggle("is-open", open.has(a.dataset.id)));
   }
 

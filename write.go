@@ -27,6 +27,16 @@ func DefaultTheme() fs.FS {
 	return sub
 }
 
+// Styles lists the built-in styles that Config.Style accepts.
+func Styles() []string {
+	entries, _ := fs.ReadDir(webFS, "web/styles")
+	var out []string
+	for _, e := range entries {
+		out = append(out, strings.TrimSuffix(e.Name(), ".css"))
+	}
+	return out
+}
+
 // Stats summarizes a build.
 type Stats struct {
 	Notes         int     // published notes
@@ -201,7 +211,38 @@ func (g *Garden) Write(ctx context.Context, out string) (*Stats, error) {
 		}
 		count(changed)
 	}
-	shell, err := g.renderTemplate("index.html", map[string]any{"Title": cfg.Title, "Description": cfg.Description})
+	// Stylesheets layered after garden.css: the built-in style, then the
+	// user's own, each written under css/.
+	var sheets []string
+	addSheet := func(name string, b []byte) error {
+		changed, err := writeIfChanged(filepath.Join(out, "css", name), b)
+		if err != nil {
+			return err
+		}
+		count(changed)
+		sheets = append(sheets, "css/"+name)
+		return nil
+	}
+	if cfg.Style != "" {
+		b, err := fs.ReadFile(webFS, "web/styles/"+cfg.Style+".css")
+		if err != nil {
+			return nil, err
+		}
+		if err := addSheet("style-"+cfg.Style+".css", b); err != nil {
+			return nil, err
+		}
+	}
+	for i, p := range cfg.CSS {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return nil, fmt.Errorf("garden: css: %w", err)
+		}
+		if err := addSheet(fmt.Sprintf("custom-%d-%s", i+1, filepath.Base(p)), b); err != nil {
+			return nil, err
+		}
+	}
+
+	shell, err := g.renderTemplate("index.html", map[string]any{"Title": cfg.Title, "Description": cfg.Description, "Stylesheets": sheets})
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +262,7 @@ func (g *Garden) Write(ctx context.Context, out string) (*Stats, error) {
 			page, err := g.renderTemplate("note.html", map[string]any{
 				"Site": cfg.Title, "Title": n.Title, "Excerpt": n.Excerpt, "ID": n.ID,
 				"Base": strings.Repeat("../", strings.Count(n.ID, "/")+1), "Body": template.HTML(html(n)),
-				"Back": g.back[n.ID], "Titles": titles,
+				"Back": g.back[n.ID], "Titles": titles, "Stylesheets": sheets,
 			})
 			if err != nil {
 				return err

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -74,6 +75,15 @@ type Config struct {
 	MaxAssetMB       float64 `yaml:"max_asset_mb"`
 	AssetFallbackURL string  `yaml:"asset_fallback_url"`
 
+	// Style picks a built-in look layered over the default theme: "" (the
+	// default) or "wiki" (light, blue links, red links for missing or
+	// unpublished notes). See Styles.
+	Style string `yaml:"style"`
+
+	// CSS lists extra stylesheets, applied after the theme and Style, so
+	// they can override any rule or CSS variable.
+	CSS []string `yaml:"css"`
+
 	// Theme is a folder whose garden.css, garden.js, index.html or note.html
 	// replace the built-in ones. Default "theme" next to the config file,
 	// used only if it exists.
@@ -123,6 +133,16 @@ func (c Config) normalized() (*Config, error) {
 	if c.Theme != "" {
 		c.Theme = c.abs(c.Theme)
 	}
+	if c.Style != "" {
+		if _, err := fs.Stat(webFS, "web/styles/"+c.Style+".css"); err != nil {
+			return nil, fmt.Errorf("garden: unknown style %q (built-in styles: %s)", c.Style, strings.Join(Styles(), ", "))
+		}
+	}
+	css := make([]string, len(c.CSS))
+	for i, p := range c.CSS {
+		css[i] = c.abs(p)
+	}
+	c.CSS = css
 	if c.Title == "" {
 		c.Title = "Notes"
 	}

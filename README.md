@@ -54,7 +54,9 @@ source_url: https://github.com/me/notes/blob/main/   # adds a "Source" link to e
 static_pages: true            # also write notes/<id>.html for search engines and no-JS readers
 max_asset_mb: 0               # skip larger files (0 = no limit)...
 asset_fallback_url: ""        # ...and link them from here instead
-theme: theme                  # folder of overrides (garden.css, garden.js, index.html, note.html)
+style: wiki                   # built-in look: "" (default) or wiki
+css: [overrides.css]          # your stylesheets, loaded last
+theme: theme                  # folder of whole-file replacements (garden.css, garden.js, index.html, note.html)
 ```
 
 If `home` is blank and the vault has no `index.md` at its root, which is common in Obsidian vaults, garden generates an index page. It lists the ten most-linked notes with their opening lines, followed by the whole contents tree. The generated page doesn't appear in any note's backlinks. If `home` names a note that doesn't exist, the build stops with an error.
@@ -101,9 +103,27 @@ stats, err := g.Write(ctx, "dist")                          // write the site la
 
 Full API docs are at [pkg.go.dev](https://pkg.go.dev/github.com/zoravur/garden).
 
-## Theming
+## Styling
 
-All colours, fonts and pane sizes are CSS variables at the top of [`web/garden.css`](web/garden.css). To change them without forking, put any of `garden.css`, `garden.js`, `index.html` or `note.html` in a `theme/` folder next to `garden.yaml`. `garden.DefaultTheme()` returns the built-in files as a starting point.
+There are three layers, applied in order, and each can override the ones before it.
+
+1. **`style:`** picks a built-in look. `style: wiki` gives an encyclopedia style: light only, sans-serif text under ruled serif headings, blue links, and **red links** for notes that are missing or unpublished.
+2. **`css:`** adds your own stylesheets. They load last, so a few lines of CSS are enough to change anything:
+
+   ```yaml
+   style: wiki
+   css: [garden-overrides.css]
+   ```
+   ```css
+   /* garden-overrides.css */
+   :root { --accent: #0b6e4f; --pane-w: 680px; }
+   .pane-title { font-size: 34px; }
+   ```
+
+   Colours, fonts and sizes are CSS variables (`--accent`, `--ink`, `--paper`, `--sheet`, `--f-body`, `--pane-w`, ...), listed at the top of [`web/garden.css`](web/garden.css). The wiki style adds `--redlink`.
+3. **`theme:`** replaces whole files. Put `garden.css`, `garden.js`, `index.html` or `note.html` in a folder to use it instead of the built-in version. `garden.DefaultTheme()` returns the built-in files to start from.
+
+Links to notes that don't exist get the class `missing`. Links to unpublished notes (with `public_only`) are reduced to `<span class="private">`, which keeps the text but has no target, so a stylesheet can colour both without the site revealing anything.
 
 ## Output
 
