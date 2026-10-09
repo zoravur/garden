@@ -58,7 +58,7 @@
     const backHTML = back.length
       ? back.map((b) => `<a class="backlink" href="notes/${esc(b.s)}.html" data-id="${esc(b.s)}">
           <span class="backlink-title">${esc(titleOf(b.s))}</span>
-          ${b.r.map(([sec, ctx, label]) => `<span class="backlink-ref">${sec ? `<span class="sec">§ ${esc(sec)}</span>` : ""}${markLabel(ctx, label)}</span>`).join("")}
+          ${b.r.map(([sec, ctx]) => `<span class="backlink-ref">${sec ? `<span class="sec">§ ${sec}</span>` : ""}${ctx}</span>`).join("")}
         </a>`).join("")
       : `<p class="backlinks-none">No notes link here yet.</p>`;
     return `
@@ -75,12 +75,6 @@
       </div>`;
   }
 
-  function markLabel(ctx, label) {
-    const e = esc(ctx);
-    const l = label && esc(label);
-    const i = l ? e.indexOf(l) : -1;
-    return i < 0 ? e : e.slice(0, i) + "<mark>" + l + "</mark>" + e.slice(i + l.length);
-  }
 
   function formatDate(d) {
     const m = String(d).match(/^(\d{4})-?(\d{2})-?(\d{2})/);
@@ -109,6 +103,13 @@
         if (!el.isConnected) return; // stack changed while loading
         el.innerHTML = paneHTML(id, i, entry);
         if (entry.code) highlight(el);
+        if (entry.m || el.querySelector(".backlinks .math")) {
+          // Rendering changes heights, so re-apply an anchor jump afterwards.
+          renderMath(el).then(() => {
+            const at = Array.prototype.indexOf.call(panesEl.children, el);
+            if (at >= 0 && stack[at]?.anchor) scrollToAnchor(el, stack[at].anchor);
+          });
+        }
       } catch (err) {
         el.innerHTML = `<div class="pane-scroll"><h1 class="pane-title">${esc(titleOf(id))}</h1><p>Couldn't load this note (${esc(err.message)}). Check your connection and reload the page.</p></div>`;
       }
@@ -126,6 +127,38 @@
     const a = stack[target]?.anchor;
     if (a) scrollToAnchor(panesEl.children[target], a);
     updateCollapsed();
+  }
+
+  // KaTeX is loaded the first time a note with math is shown.
+  let katexLoading = null;
+  function loadKatex() {
+    if (window.katex) return Promise.resolve();
+    if (!katexLoading) {
+      katexLoading = new Promise((resolve, reject) => {
+        const css = document.createElement("link");
+        css.rel = "stylesheet";
+        css.href = "katex/katex.min.css";
+        document.head.appendChild(css);
+        const js = document.createElement("script");
+        js.src = "katex/katex.min.js";
+        js.onload = resolve;
+        js.onerror = () => { katexLoading = null; reject(new Error("couldn't load KaTeX")); };
+        document.head.appendChild(js);
+      });
+    }
+    return katexLoading;
+  }
+  async function renderMath(root) {
+    const els = root.querySelectorAll(".math:not([data-rendered])");
+    if (!els.length) return;
+    try { await loadKatex(); } catch { return; } // formulas stay readable as TeX
+    els.forEach((el) => {
+      const display = el.classList.contains("math-display");
+      try {
+        katex.render(el.textContent, el, { displayMode: display, throwOnError: false });
+        el.dataset.rendered = "";
+      } catch { /* leave the TeX source showing */ }
+    });
   }
 
   function highlight(el) {
@@ -274,6 +307,8 @@
     body.firstElementChild.innerHTML = entry ? entry.h : "<p>Couldn't load this note.</p>";
     body.querySelectorAll("img").forEach((img) => { img.loading = "eager"; });
     if (entry && entry.code) highlight(body);
+    if (entry && entry.m) await renderMath(body);
+    if (token !== previewToken || previewEl.hidden) return;
     if (anchor) {
       const h = body.querySelector(`[id="${CSS.escape(anchor)}"]`);
       if (h) { body.scrollTop += h.getBoundingClientRect().top - body.getBoundingClientRect().top - 10; h.classList.add("preview-target"); }

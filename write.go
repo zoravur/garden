@@ -143,7 +143,7 @@ func (g *Garden) Write(ctx context.Context, out string) (*Stats, error) {
 	}
 	type jsonBacklink struct {
 		Source string      `json:"s"`
-		Refs   [][4]string `json:"r"` // section, context, label, anchor
+		Refs   [][3]string `json:"r"` // section HTML, context HTML (label marked), anchor
 	}
 	type jsonEntry struct {
 		HTML string         `json:"h"`
@@ -151,6 +151,7 @@ func (g *Garden) Write(ctx context.Context, out string) (*Stats, error) {
 		Code bool           `json:"code,omitempty"`
 		Date string         `json:"d,omitempty"`
 		Gen  bool           `json:"g,omitempty"`
+		Math bool           `json:"m,omitempty"`
 	}
 	shards := make([]map[string]*jsonEntry, nShards)
 	for i := range shards {
@@ -166,11 +167,11 @@ func (g *Garden) Write(ctx context.Context, out string) (*Stats, error) {
 				if i == 3 {
 					break
 				}
-				jb.Refs = append(jb.Refs, [4]string{r.Section, r.Context, r.Label, r.Anchor})
+				jb.Refs = append(jb.Refs, [3]string{snippetHTML(r.Section, ""), snippetHTML(r.Context, r.Label), r.Anchor})
 			}
 			back = append(back, jb)
 		}
-		shards[s][n.ID] = &jsonEntry{HTML: html(n), Back: back, Code: n.HasCode, Date: n.Date, Gen: n.Generated}
+		shards[s][n.ID] = &jsonEntry{HTML: html(n), Back: back, Code: n.HasCode, Date: n.Date, Gen: n.Generated, Math: n.HasMath}
 		index[n.ID] = [4]any{n.Title, s, n.Excerpt, len(back)}
 	}
 	home := cfg.Home
@@ -211,6 +212,29 @@ func (g *Garden) Write(ctx context.Context, out string) (*Stats, error) {
 		}
 		count(changed)
 	}
+	// KaTeX, only when some note has math.
+	hasMath := false
+	for _, n := range g.Notes {
+		hasMath = hasMath || n.HasMath
+	}
+	if hasMath {
+		err := fs.WalkDir(webFS, "web/katex", func(p string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return err
+			}
+			b, err := fs.ReadFile(webFS, p)
+			if err != nil {
+				return err
+			}
+			changed, err := writeIfChanged(filepath.Join(out, filepath.FromSlash(strings.TrimPrefix(p, "web/"))), b)
+			count(changed)
+			return err
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Stylesheets layered after garden.css: the built-in style, then the
 	// user's own, each written under css/.
 	var sheets []string
@@ -262,7 +286,7 @@ func (g *Garden) Write(ctx context.Context, out string) (*Stats, error) {
 			page, err := g.renderTemplate("note.html", map[string]any{
 				"Site": cfg.Title, "Title": n.Title, "Excerpt": n.Excerpt, "ID": n.ID,
 				"Base": strings.Repeat("../", strings.Count(n.ID, "/")+1), "Body": template.HTML(html(n)),
-				"Back": g.back[n.ID], "Titles": titles, "Stylesheets": sheets,
+				"Back": g.back[n.ID], "Titles": titles, "Stylesheets": sheets, "Math": n.HasMath || backlinksHaveMath(g.back[n.ID]),
 			})
 			if err != nil {
 				return err
@@ -279,6 +303,17 @@ func (g *Garden) Write(ctx context.Context, out string) (*Stats, error) {
 	st.Written, st.Unchanged = int(written.Load()), int(unchanged.Load())
 	st.Took = time.Since(start)
 	return st, nil
+}
+
+func backlinksHaveMath(back []Backlink) bool {
+	for _, b := range back {
+		for _, r := range b.Refs {
+			if strings.Contains(snippetHTML(r.Context, ""), `class="math`) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (g *Garden) themeFile(name string) ([]byte, error) {
@@ -301,6 +336,7 @@ func (g *Garden) renderTemplate(name string, data any) ([]byte, error) {
 	}
 	tpl, err := template.New(name).Funcs(template.FuncMap{
 		"href":      func(id string) string { return noteHref(id, "") },
+		"snippet":   func(s string) template.HTML { return template.HTML(snippetHTML(s, "")) },
 		"title":     func(titles map[string]string, id string) string { return titles[id] },
 		"stackHash": stackHash,
 	}).Parse(string(src))

@@ -36,17 +36,19 @@ func renderNote(v *vault, id string, src []byte) (*Note, error) {
 		n.Date = fmt.Sprint(d)
 	}
 
+	body, math := protectMath(body) // first, so nothing below touches formulas
+	n.HasMath = !math.empty()
 	body = preprocessWikilinks(body)
 	body = preprocessAdmonitions(body)
 
-	ctx := parser.NewContext(parser.WithIDs(newMkdocsIDs()))
+	ctx := parser.NewContext(parser.WithIDs(newMkdocsIDs(math.restoreText)))
 	doc := md.Parser().Parse(text.NewReader(body), parser.WithContext(ctx))
 
 	// Title: frontmatter, else a leading top-level heading, else the file name.
 	// A leading heading that repeats the title is dropped; the pane shows it.
 	if first := doc.FirstChild(); first != nil {
 		if h, ok := first.(*ast.Heading); ok && h.Level == 1 {
-			ht := strings.TrimSpace(plainText(h, body))
+			ht := strings.TrimSpace(math.restoreText(plainText(h, body)))
 			if n.Title == "" {
 				n.Title = ht
 			}
@@ -68,7 +70,7 @@ func renderNote(v *vault, id string, src []byte) (*Note, error) {
 		}
 		switch x := node.(type) {
 		case *ast.Heading:
-			section = strings.TrimSpace(plainText(x, body))
+			section = strings.TrimSpace(math.restoreText(plainText(x, body)))
 			if cfg.HeadingShift != 0 {
 				x.Level = min(6, max(1, x.Level+cfg.HeadingShift))
 			}
@@ -86,7 +88,7 @@ func renderNote(v *vault, id string, src []byte) (*Note, error) {
 				x.SetAttributeString("class", []byte("internal"))
 				if target != id {
 					n.Links = append(n.Links, Link{Target: target, Anchor: anchor, Section: section,
-						Label: strings.TrimSpace(plainText(x, body)), Context: contextOf(x, body)})
+						Label: strings.TrimSpace(math.restoreText(plainText(x, body))), Context: math.restoreText(contextOf(x, body))})
 				}
 			case targetAsset:
 				x.Destination = []byte(assetHref(target))
@@ -139,7 +141,7 @@ func renderNote(v *vault, id string, src []byte) (*Note, error) {
 	}
 
 	if p := firstParagraph(doc, body); p != nil {
-		n.Excerpt = truncate(plainText(p, body), 320)
+		n.Excerpt = truncate(math.restoreText(plainText(p, body)), 320)
 	}
 
 	var buf bytes.Buffer
@@ -152,7 +154,7 @@ func renderNote(v *vault, id string, src []byte) (*Note, error) {
 		out = strings.ReplaceAll(out, `src="`+p, `src="`)
 		out = strings.ReplaceAll(out, `href="`+p, `href="`)
 	}
-	n.HTML = out
+	n.HTML = math.restoreHTML(out)
 	return n, nil
 }
 
@@ -306,9 +308,14 @@ func humanize(s string) string {
 // --- heading ids that match Python-Markdown's toc slugify, so existing
 // "note.md#some-heading" links from an mkdocs site keep working.
 
-type mkdocsIDs struct{ used map[string]bool }
+type mkdocsIDs struct {
+	used    map[string]bool
+	restore func(string) string // puts math back before slugging
+}
 
-func newMkdocsIDs() *mkdocsIDs { return &mkdocsIDs{used: map[string]bool{}} }
+func newMkdocsIDs(restore func(string) string) *mkdocsIDs {
+	return &mkdocsIDs{used: map[string]bool{}, restore: restore}
+}
 
 var (
 	reNonWord   = regexp.MustCompile(`[^\w\s-]`)
@@ -329,7 +336,7 @@ func slugify(s string) string {
 }
 
 func (m *mkdocsIDs) Generate(value []byte, kind ast.NodeKind) []byte {
-	base := slugify(stripInlineMarkup(string(value)))
+	base := slugify(stripInlineMarkup(m.restore(string(value))))
 	if base == "" {
 		base = "_"
 	}

@@ -23,6 +23,7 @@ type Note struct {
 	Assets      []string       // vault paths of images and files the note uses
 	Broken      []string       // link targets that match no note or file
 	HasCode     bool           // contains a code block
+	HasMath     bool           // contains math, rendered in the browser with KaTeX
 	Generated   bool           // made by garden (the index page), not read from the vault
 }
 

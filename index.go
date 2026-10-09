@@ -57,7 +57,7 @@ func generateIndex(g *Garden, id string) *Note {
 		for _, h := range hubs {
 			fmt.Fprintf(&b, "<li>%s <span class=\"index-count\">%d link%s</span>", link(h.id), h.count, plural(h.count))
 			if ex := g.byID[h.id].Excerpt; ex != "" {
-				fmt.Fprintf(&b, "<br><span class=\"index-excerpt\">%s</span>", html.EscapeString(ex))
+				fmt.Fprintf(&b, "<br><span class=\"index-excerpt\">%s</span>", snippetHTML(ex, ""))
 			}
 			b.WriteString("</li>\n")
 		}
@@ -99,7 +99,7 @@ func generateIndex(g *Garden, id string) *Note {
 	}
 	return &Note{
 		ID: id, Path: "", Title: cfg.Title, HTML: b.String(),
-		Excerpt: excerpt, Generated: true,
+		Excerpt: excerpt, Generated: true, HasMath: strings.Contains(b.String(), `class="math`),
 	}
 }
 

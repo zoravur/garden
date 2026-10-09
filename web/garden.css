@@ -159,7 +159,7 @@ body {
 .note code { font: 400 .84em var(--f-code); background: var(--code-bg); padding: .1em .3em; border-radius: 3px; }
 .note pre { background: var(--code-bg); padding: 12px 14px; border-radius: 6px; overflow-x: auto; font-size: 14px; line-height: 1.5; }
 .note pre code { background: none; padding: 0; font-size: 13.5px; }
-.note table { display: block; overflow-x: auto; border-collapse: collapse; font-size: 15px; }
+.note table { display: block; width: max-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 15px; }
 .note th, .note td { border: 1px solid var(--rule); padding: 5px 9px; text-align: left; vertical-align: top; }
 .note th { font-family: var(--f-ui); font-weight: 600; }
 .note dt { font-weight: 600; }
@@ -187,6 +187,15 @@ details.admonition > summary { cursor: pointer; }
 .hljs-number, .hljs-variable, .hljs-template-variable, .hljs-type, .hljs-deletion { color: var(--warn); }
 .hljs-title, .hljs-section, .hljs-name { color: var(--ink); font-weight: 600; }
 .hljs-meta { color: var(--quote); }
+
+/* math (rendered by KaTeX; the TeX source shows until it loads) */
+.note .math-display { display: block; margin: 1em 0; overflow-x: auto; overflow-y: hidden; text-align: center; }
+.note .math-display:not([data-rendered]), .note .math-inline:not([data-rendered]) { font-family: var(--f-code); font-size: .9em; color: var(--ink-soft); }
+.note .math-display:not([data-rendered]) { text-align: left; white-space: pre-wrap; }
+.note .katex { font-size: 1.08em; }
+.note, .preview-body { counter-reset: katexEqnNo mmlEqnNo; } /* equation numbers restart in each note */
+.note .katex-display { margin: 0; }
+.preview-body .math-display { margin: .6em 0; }
 
 /* generated index page */
 .note .index-count { font: 400 12.5px var(--f-ui); color: var(--ink-soft); letter-spacing: .03em; margin-left: 4px; font-variant-numeric: tabular-nums; }

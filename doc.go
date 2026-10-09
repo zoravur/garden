@@ -33,6 +33,14 @@
 // Heading IDs follow Python-Markdown's slug rules, so #anchor links written
 // for an MkDocs site keep working.
 //
+// # Math
+//
+// $inline$, $$display$$, \(inline\), \[display\] and \begin{env} blocks are
+// set aside before markdown parsing, so the parser can't alter them, and
+// rendered in the browser with a bundled copy of KaTeX. A dollar sign is
+// only treated as math when it pairs up the way Pandoc requires, so prices,
+// shell variables and code are left alone.
+//
 // # Output
 //
 // [Garden.Write] produces plain static files: an app shell (index.html,

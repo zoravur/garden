@@ -21,9 +21,16 @@
   <article class="note">{{.Body}}</article>
   <section class="backlinks">
     <h2>Links to this note</h2>
-    {{range .Back}}<a class="backlink" href="{{href .Source}}"><span class="backlink-title">{{title $.Titles .Source}}</span>{{range .Refs}}<span class="backlink-ref">{{.Context}}</span>{{end}}</a>
+    {{range .Back}}<a class="backlink" href="{{href .Source}}"><span class="backlink-title">{{title $.Titles .Source}}</span>{{range .Refs}}<span class="backlink-ref">{{snippet .Context}}</span>{{end}}</a>
     {{else}}<p class="backlinks-none">No notes link here yet.</p>{{end}}
   </section>
 </main>
-</body>
+{{if .Math}}<link rel="stylesheet" href="katex/katex.min.css">
+<script src="katex/katex.min.js"></script>
+<script>
+document.querySelectorAll(".math").forEach(function (el) {
+  katex.render(el.textContent, el, { displayMode: el.classList.contains("math-display"), throwOnError: false });
+});
+</script>
+{{end}}</body>
 </html>

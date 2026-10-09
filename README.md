@@ -7,6 +7,7 @@ Turn a folder of markdown notes into a knowledge garden: a static site where lin
 
 - A single Go binary, also usable as a library.
 - Reads Obsidian vaults (`[[wikilinks]]`) and MkDocs sites (`[text](note.md)`, admonitions, `mkdocs.yml` nav).
+- Renders LaTeX math with a bundled copy of KaTeX, so it works offline.
 - Parses and renders notes in parallel: 636 notes in about 0.3 s.
 - Outputs plain static files that you can host on GitHub Pages or anywhere else.
 - Only rewrites output files that changed.
@@ -73,6 +74,7 @@ With `public_only: true`, private notes never reach the output. A link to a priv
 | Frontmatter `title`, `date`, `public` | Without a `title`, the leading `#` heading is used, then the file name. |
 | GFM tables, task lists, footnotes, definition lists | Rendered by [goldmark](https://github.com/yuin/goldmark). |
 | Fenced code with a language | Highlighted in the browser. |
+| `$x$`, `$$x$$`, `\(x\)`, `\[x\]`, `\begin{align}…\end{align}` | Math, rendered with [KaTeX](https://katex.org). KaTeX ships inside garden and is added to the site only if a note uses math. Prices like `$5 and $10`, shell variables, and anything in code stay plain text. |
 
 Heading IDs follow MkDocs' slug rules, so existing `#section` links keep working. `garden build -report broken.txt` lists links that point nowhere.
 
