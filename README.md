@@ -71,7 +71,7 @@ With `public_only: true`, private notes never reach the output. A link to a priv
 | `[label](other-note.md#heading)` | Resolved relative to the note, then from the vault root, then **by file name anywhere in the vault**. Notes can move between folders without breaking links. |
 | `[[Note]]`, `[[Note\|label]]`, `[[Note#Heading]]`, `![[image.png]]` | Obsidian wikilinks. Links inside code are left alone. |
 | `!!! note "Title"`, `??? warning`, `???+ tip` | MkDocs Material admonitions. The `???` forms are collapsible. |
-| Frontmatter `title`, `date`, `public` | Without a `title`, the leading `#` heading is used, then the file name. |
+| Frontmatter `title`, `date`, `public` | Without a `title`, the leading `#` heading is used, then the file name (underscores become spaces; hyphens are kept, so `2026-10-22` stays a date). |
 | GFM tables, task lists, footnotes, definition lists | Rendered by [goldmark](https://github.com/yuin/goldmark). |
 | Fenced code with a language | Highlighted in the browser. |
 | `$x$`, `$$x$$`, `\(x\)`, `\[x\]`, `\begin{align}…\end{align}` | Math, rendered with [KaTeX](https://katex.org). KaTeX ships inside garden and is added to the site only if a note uses math. Prices like `$5 and $10`, shell variables, and anything in code stay plain text. |

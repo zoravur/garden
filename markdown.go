@@ -296,7 +296,7 @@ func truncate(s string, n int) string {
 func utf8Start(b byte) bool { return b&0xC0 != 0x80 }
 
 func humanize(s string) string {
-	s = strings.NewReplacer("_", " ", "-", " ").Replace(s)
+	s = strings.ReplaceAll(s, "_", " ")
 	if s == "" {
 		return s
 	}
