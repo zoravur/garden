@@ -6,6 +6,7 @@
 Turn a folder of markdown notes into a knowledge garden: a static site where links open notes in **stacked panes**, side by side, in the style of [Andy Matuschak's working notes](https://notes.andymatuschak.org/). Every note lists its **backlinks**, and hovering a link shows a **preview** of the linked note, scrolled to the linked section.
 
 - A single Go binary, also usable as a library.
+- A search box in the top bar matches note titles and full text. With nothing typed, it shows the contents tree. Choosing a note there starts a fresh trail.
 - Reads Obsidian vaults (`[[wikilinks]]`) and MkDocs sites (`[text](note.md)`, admonitions, `mkdocs.yml` nav).
 - Renders LaTeX math with a bundled copy of KaTeX, so it works offline.
 - Parses and renders notes in parallel: 636 notes in about 0.3 s.
@@ -100,7 +101,7 @@ stats, err := g.Write(ctx, "dist")                          // write the site la
 
 - **Notes come from any `fs.FS`:** a directory, an `embed.FS`, a zip archive, or an in-memory `fstest.MapFS`.
 - **`Load` and `Write` are separate.** You can index notes or validate links without producing a site, and loading honours context cancellation.
-- **What each note carries:** a `Note` has its rendered HTML, frontmatter, excerpt and outgoing `Link`s. Each link records the heading it sits under and the sentence around it.
+- **What each note carries:** a `Note` has its rendered HTML, plain `Text`, frontmatter, excerpt and outgoing `Link`s. Each link records the heading it sits under and the sentence around it.
 - **Backlinks:** `Garden.Backlinks` returns the inverted edges, sorted.
 
 Full API docs are at [pkg.go.dev](https://pkg.go.dev/github.com/zoravur/garden).
@@ -134,6 +135,7 @@ dist/
   index.html, garden.css, garden.js   the app shell
   data/index.json                     titles, excerpts, contents tree
   data/shard-NNN.json                 note bodies and backlinks, fetched on demand
+  data/search.json                    plain text of every note, fetched on the first search
   notes/<id>.html                     one plain page per note
   <assets>                            images and files the notes use
 ```

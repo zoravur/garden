@@ -121,6 +121,9 @@ func renderNote(v *vault, id string, src []byte) (*Note, error) {
 		return ast.WalkContinue, nil
 	})
 
+	// Before private links are unwrapped below: that inserts raw HTML.
+	n.Text = math.restoreText(bodyText(doc, body))
+
 	// Links to unpublished notes keep their text, wrapped so themes can
 	// style them, but lose the target: nothing names the private note.
 	raw := func(h string) *ast.String {
@@ -236,6 +239,49 @@ func plainText(n ast.Node, src []byte) string {
 		return ast.WalkContinue, nil
 	})
 	return strings.Join(strings.Fields(b.String()), " ")
+}
+
+// bodyText is the plain text of a whole document for search: one line per
+// block, whitespace collapsed, code blocks included, raw HTML left out.
+func bodyText(doc ast.Node, src []byte) string {
+	var b strings.Builder
+	_ = ast.Walk(doc, func(c ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			if c.Type() == ast.TypeBlock {
+				b.WriteByte('\n')
+			}
+			return ast.WalkContinue, nil
+		}
+		switch t := c.(type) {
+		case *ast.Text:
+			b.Write(t.Segment.Value(src))
+			if t.SoftLineBreak() || t.HardLineBreak() {
+				b.WriteByte(' ')
+			}
+		case *ast.String:
+			b.Write(t.Value)
+		case *ast.AutoLink:
+			b.Write(t.URL(src))
+		case *ast.RawHTML, *ast.HTMLBlock:
+			return ast.WalkSkipChildren, nil
+		case *ast.FencedCodeBlock, *ast.CodeBlock:
+			lines := c.Lines()
+			for i := 0; i < lines.Len(); i++ {
+				seg := lines.At(i)
+				b.Write(seg.Value(src))
+				b.WriteByte('\n')
+			}
+			return ast.WalkSkipChildren, nil
+		}
+		return ast.WalkContinue, nil
+	})
+	var out []string
+	for _, line := range strings.Split(b.String(), "\n") {
+		if f := strings.Fields(line); len(f) > 0 {
+			out = append(out, strings.Join(f, " "))
+		}
+	}
+	return strings.Join(out, "\n")
 }
 
 // contextOf returns the text of the nearest enclosing block, trimmed to a

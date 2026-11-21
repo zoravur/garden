@@ -45,6 +45,7 @@
 //
 // [Garden.Write] produces plain static files: an app shell (index.html,
 // garden.css, garden.js), the note data split into shards that the browser
-// loads on demand, optional per-note HTML pages, and the assets notes
-// reference. Files whose content hasn't changed are not rewritten.
+// loads on demand, the notes' plain text for the search box (fetched the
+// first time a reader searches), optional per-note HTML pages, and the
+// assets notes reference. Files whose content hasn't changed are not rewritten.
 package garden

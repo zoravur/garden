@@ -255,3 +255,66 @@ func TestStyleAndCustomCSSAreLayeredAfterTheTheme(t *testing.T) {
 		t.Errorf("unknown style should list the built-in ones, got %v", err)
 	}
 }
+
+func TestNoteTextAndSearchData(t *testing.T) {
+	vault := testVault()
+	vault["linker.md"] = file("---\npublic: true\n---\nSee [the plan](<drafts/secret plan.md>) and <b>bold</b> HTML.\n")
+	vault["index.md"].Data = []byte("---\ntitle: Home\npublic: true\n---\n\nStart with [[Evergreen notes]].\n")
+	vault["Evergreen notes.md"].Data = append([]byte("---\npublic: true\n---\n"), vault["Evergreen notes.md"].Data...)
+	g := load(t, Config{FS: vault, PublicOnly: true})
+
+	ev, _ := g.Note("Evergreen notes")
+	want := "They compound through backlinks.\n// [[not a link]]\nAnd [[not a link either]]."
+	if ev.Text != want {
+		t.Errorf("text = %q, want %q", ev.Text, want)
+	}
+	if l, _ := g.Note("linker"); l.Text != "See the plan and bold HTML." {
+		t.Errorf("private link text should keep its label and nothing else: %q", l.Text)
+	}
+
+	out := t.TempDir()
+	if _, err := g.Write(context.Background(), out); err != nil {
+		t.Fatal(err)
+	}
+	var text map[string]string
+	b, _ := os.ReadFile(filepath.Join(out, "data/search.json"))
+	if err := json.Unmarshal(b, &text); err != nil || text["Evergreen notes"] != want {
+		t.Errorf("search.json: %v %v", err, text)
+	}
+	if strings.Contains(string(b), "secret") {
+		t.Error("search.json names a private note")
+	}
+
+	// A note nothing links to says so quietly, without a heading.
+	lonely, _ := os.ReadFile(filepath.Join(out, "notes/linker.html"))
+	if s := string(lonely); !strings.Contains(s, "No links to this note yet.") || strings.Contains(s, "<h2>Links to this note") {
+		t.Errorf("note without backlinks:\n%s", s)
+	}
+	linked, _ := os.ReadFile(filepath.Join(out, "notes/Evergreen notes.html"))
+	if s := string(linked); !strings.Contains(s, "<h2>Links to this note") || strings.Contains(s, "No links to this note yet.") {
+		t.Errorf("note with backlinks:\n%s", s)
+	}
+}
+
+func TestGeneratedHomeIsNotInSearchData(t *testing.T) {
+	vault := testVault()
+	delete(vault, "index.md")
+	g := load(t, Config{FS: vault, Title: "T"})
+	out := t.TempDir()
+	if _, err := g.Write(context.Background(), out); err != nil {
+		t.Fatal(err)
+	}
+	var text map[string]string
+	b, _ := os.ReadFile(filepath.Join(out, "data/search.json"))
+	if err := json.Unmarshal(b, &text); err != nil {
+		t.Fatal(err)
+	}
+	for id := range text {
+		if n, _ := g.Note(id); n.Generated {
+			t.Errorf("generated note %q in search.json", id)
+		}
+	}
+	if len(text) != 3 {
+		t.Errorf("search.json has %d notes, want 3", len(text))
+	}
+}

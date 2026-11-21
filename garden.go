@@ -19,6 +19,7 @@ type Note struct {
 	Frontmatter map[string]any // parsed YAML frontmatter; nil if there is none
 	HTML        string         // rendered body; links are relative to the site root
 	Excerpt     string         // plain text of the first paragraph, trimmed
+	Text        string         // plain text of the whole body, one block per line, code included
 	Links       []Link         // outgoing links to other published notes, in document order
 	Assets      []string       // vault paths of images and files the note uses
 	Broken      []string       // link targets that match no note or file

@@ -200,6 +200,22 @@ func (g *Garden) Write(ctx context.Context, out string) (*Stats, error) {
 	}
 	count(changed)
 
+	// Full text for the search box, fetched the first time a reader uses it.
+	text := make(map[string]string, len(g.Notes))
+	for _, n := range g.Notes {
+		if !n.Generated && n.Text != "" {
+			text[n.ID] = n.Text
+		}
+	}
+	sb, err := json.Marshal(text)
+	if err != nil {
+		return nil, err
+	}
+	if changed, err = writeIfChanged(filepath.Join(out, "data", "search.json"), sb); err != nil {
+		return nil, err
+	}
+	count(changed)
+
 	// App shell.
 	for _, f := range []string{"garden.css", "garden.js"} {
 		b, err := g.themeFile(f)

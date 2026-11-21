@@ -15,22 +15,17 @@
 <body>
 <div class="app" id="app">
   <header class="bar">
-    <button class="bar-btn" id="contents-btn" type="button" aria-controls="drawer" aria-expanded="false">
-      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M2 3.5h12M2 8h12M2 12.5h8" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
-      <span>Contents</span>
-    </button>
     <a class="bar-title" id="site-title" href="index.html">{{.Title}}</a>
+    <div class="search" id="search">
+      <svg class="search-icon" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="7" cy="7" r="4.75" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <label class="sr-only" for="search-input">Search notes</label>
+      <input id="search-input" type="search" placeholder="Search notes" autocomplete="off" spellcheck="false"
+        role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-panel">
+      <kbd class="search-key" aria-hidden="true">/</kbd>
+      <div class="search-panel" id="search-panel" hidden></div>
+    </div>
     <span class="bar-stats" id="stats"></span>
   </header>
-
-  <aside class="drawer" id="drawer" hidden>
-    <div class="drawer-head">
-      <label class="sr-only" for="filter">Find a note by title</label>
-      <input id="filter" type="search" placeholder="Find a note…  ( / )" autocomplete="off" spellcheck="false">
-    </div>
-    <nav class="drawer-body" id="nav" aria-label="Contents"></nav>
-  </aside>
-  <div class="scrim" id="scrim" hidden></div>
 
   <main class="panes" id="panes" aria-live="polite">
     <div class="loading" id="loading">Loading notes…</div>
