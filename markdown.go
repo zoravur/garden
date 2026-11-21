@@ -13,15 +13,17 @@ import (
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/renderer"
 	ghtml "github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/util"
 	"golang.org/x/text/unicode/norm"
 )
 
 var md = goldmark.New(
 	goldmark.WithExtensions(extension.GFM, extension.Footnote, extension.DefinitionList),
-	goldmark.WithParserOptions(parser.WithAutoHeadingID()),
-	goldmark.WithRendererOptions(ghtml.WithUnsafe()),
+	goldmark.WithParserOptions(parser.WithAutoHeadingID(), parser.WithInlineParsers(util.Prioritized(tagParser{}, 500))),
+	goldmark.WithRendererOptions(ghtml.WithUnsafe(), renderer.WithNodeRenderers(util.Prioritized(tagRenderer{}, 500))),
 )
 
 // renderNote parses and renders one note. src is the file's content.
@@ -46,7 +48,12 @@ func renderNote(v *vault, id string, src []byte) (*Note, error) {
 
 	// Title: frontmatter, else a leading top-level heading, else the file name.
 	// A leading heading that repeats the title is dropped; the pane shows it.
-	if first := doc.FirstChild(); first != nil {
+	// A line of tags above the heading doesn't count.
+	first := doc.FirstChild()
+	for first != nil && isTagLine(first, body) {
+		first = first.NextSibling()
+	}
+	if first != nil {
 		if h, ok := first.(*ast.Heading); ok && h.Level == 1 {
 			ht := strings.TrimSpace(math.restoreText(plainText(h, body)))
 			if n.Title == "" {
@@ -64,11 +71,23 @@ func renderNote(v *vault, id string, src []byte) (*Note, error) {
 	section := ""
 	seenAsset := map[string]bool{}
 	var unlink []*ast.Link
+	var bodyTags []string
+	var linkedTags []*Tag
 	_ = ast.Walk(doc, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
 		}
 		switch x := node.(type) {
+		case *ast.Paragraph:
+			if _, only := tagLine(x, body); only {
+				x.SetAttributeString("class", []byte("tag-line"))
+			}
+		case *Tag:
+			if insideLink(x) { // a link can't hold another link
+				linkedTags = append(linkedTags, x)
+			} else {
+				bodyTags = append(bodyTags, x.Name)
+			}
 		case *ast.Heading:
 			section = strings.TrimSpace(math.restoreText(plainText(x, body)))
 			if cfg.HeadingShift != 0 {
@@ -121,6 +140,21 @@ func renderNote(v *vault, id string, src []byte) (*Note, error) {
 		return ast.WalkContinue, nil
 	})
 
+	for _, t := range linkedTags {
+		t.Parent().ReplaceChild(t.Parent(), t, ast.NewString([]byte("#"+t.Name)))
+	}
+	fmTags := frontmatterTags(fm)
+	n.Tags = mergeTags(fmTags, bodyTags)
+	inBody := map[string]bool{}
+	for _, t := range bodyTags {
+		inBody[strings.ToLower(t)] = true
+	}
+	for _, t := range mergeTags(fmTags) {
+		if !inBody[strings.ToLower(t)] {
+			n.metaTags = append(n.metaTags, t)
+		}
+	}
+
 	// Before private links are unwrapped below: that inserts raw HTML.
 	n.Text = math.restoreText(bodyText(doc, body))
 
@@ -144,7 +178,7 @@ func renderNote(v *vault, id string, src []byte) (*Note, error) {
 	}
 
 	if p := firstParagraph(doc, body); p != nil {
-		n.Excerpt = truncate(math.restoreText(plainText(p, body)), 320)
+		n.Excerpt = truncate(math.restoreText(excerptText(p, body)), 320)
 	}
 
 	var buf bytes.Buffer
@@ -199,7 +233,7 @@ func firstParagraph(doc ast.Node, src []byte) ast.Node {
 	var prev ast.Node
 	for c := doc.FirstChild(); c != nil; prev, c = c, c.NextSibling() {
 		p, ok := c.(*ast.Paragraph)
-		if !ok {
+		if !ok || isTagLine(p, src) {
 			continue
 		}
 		if hb, ok := prev.(*ast.HTMLBlock); ok {
@@ -217,13 +251,26 @@ func firstParagraph(doc ast.Node, src []byte) ast.Node {
 }
 
 // plainText concatenates the text under a node.
-func plainText(n ast.Node, src []byte) string {
+func plainText(n ast.Node, src []byte) string { return plainTextOf(n, src, false) }
+
+// excerptText is a paragraph's text without the tags it starts with.
+func excerptText(p ast.Node, src []byte) string { return plainTextOf(p, src, true) }
+
+func plainTextOf(n ast.Node, src []byte, skipLeadingTags bool) string {
 	var b strings.Builder
 	_ = ast.Walk(n, func(c ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
 		}
+		if skipLeadingTags && strings.TrimSpace(b.String()) == "" {
+			b.Reset()
+			if _, ok := c.(*Tag); ok {
+				return ast.WalkSkipChildren, nil
+			}
+		}
 		switch t := c.(type) {
+		case *Tag:
+			b.WriteString("#" + t.Name)
 		case *ast.Text:
 			b.Write(t.Segment.Value(src))
 			if t.SoftLineBreak() || t.HardLineBreak() {
@@ -260,6 +307,8 @@ func bodyText(doc ast.Node, src []byte) string {
 			}
 		case *ast.String:
 			b.Write(t.Value)
+		case *Tag:
+			b.WriteString("#" + t.Name)
 		case *ast.AutoLink:
 			b.Write(t.URL(src))
 		case *ast.RawHTML, *ast.HTMLBlock:

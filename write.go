@@ -152,12 +152,13 @@ func (g *Garden) Write(ctx context.Context, out string) (*Stats, error) {
 		Date string         `json:"d,omitempty"`
 		Gen  bool           `json:"g,omitempty"`
 		Math bool           `json:"m,omitempty"`
+		Tags []string       `json:"t,omitempty"` // frontmatter tags not shown in the body
 	}
 	shards := make([]map[string]*jsonEntry, nShards)
 	for i := range shards {
 		shards[i] = map[string]*jsonEntry{}
 	}
-	index := map[string][4]any{} // id -> [title, shard, excerpt, backlink count]
+	index := map[string][]any{} // id -> [title, shard, excerpt, backlink count, tags?]
 	for _, n := range g.Notes {
 		s := shardOf(n.ID)
 		var back []jsonBacklink
@@ -171,8 +172,11 @@ func (g *Garden) Write(ctx context.Context, out string) (*Stats, error) {
 			}
 			back = append(back, jb)
 		}
-		shards[s][n.ID] = &jsonEntry{HTML: html(n), Back: back, Code: n.HasCode, Date: n.Date, Gen: n.Generated, Math: n.HasMath}
-		index[n.ID] = [4]any{n.Title, s, n.Excerpt, len(back)}
+		shards[s][n.ID] = &jsonEntry{HTML: html(n), Back: back, Code: n.HasCode, Date: n.Date, Gen: n.Generated, Math: n.HasMath, Tags: n.metaTags}
+		index[n.ID] = []any{n.Title, s, n.Excerpt, len(back)}
+		if len(n.Tags) > 0 {
+			index[n.ID] = append(index[n.ID], n.Tags)
+		}
 	}
 	home := cfg.Home
 	if err := parallel(ctx, cfg.Workers, nShards, func(i int) error {
@@ -302,7 +306,7 @@ func (g *Garden) Write(ctx context.Context, out string) (*Stats, error) {
 			page, err := g.renderTemplate("note.html", map[string]any{
 				"Site": cfg.Title, "Title": n.Title, "Excerpt": n.Excerpt, "ID": n.ID,
 				"Base": strings.Repeat("../", strings.Count(n.ID, "/")+1), "Body": template.HTML(html(n)),
-				"Back": g.back[n.ID], "Titles": titles, "Stylesheets": sheets, "Math": n.HasMath || backlinksHaveMath(g.back[n.ID]),
+				"Back": g.back[n.ID], "Titles": titles, "Tags": n.metaTags, "Stylesheets": sheets, "Math": n.HasMath || backlinksHaveMath(g.back[n.ID]),
 			})
 			if err != nil {
 				return err
@@ -355,6 +359,7 @@ func (g *Garden) renderTemplate(name string, data any) ([]byte, error) {
 		"snippet":   func(s string) template.HTML { return template.HTML(snippetHTML(s, "")) },
 		"title":     func(titles map[string]string, id string) string { return titles[id] },
 		"stackHash": stackHash,
+		"tagHref":   tagHref,
 	}).Parse(string(src))
 	if err != nil {
 		return nil, fmt.Errorf("garden: theme %s: %w", name, err)

@@ -8,7 +8,7 @@
   const previewEl = $("#preview");
   const searchEl = $("#search"), searchInput = $("#search-input"), searchPanel = $("#search-panel");
 
-  let index = null;          // { title, home, notes: {id: [title, shard, excerpt, backCount]}, nav, source }
+  let index = null;          // { title, home, notes: {id: [title, shard, excerpt, backCount, tags?]}, nav, source }
   const shards = new Map();  // shard number -> Promise<{id: entry}>
   let stack = [];            // [{id, anchor}]
   const narrow = matchMedia("(max-width: 720px)");
@@ -44,6 +44,7 @@
   };
   const loadNote = async (id) => (await loadShard(index.notes[id][1]))[id];
 
+  const tagHTML = (t) => `<a class="tag" href="index.html?q=${encodeURIComponent("tag:#" + t)}" data-tag="${esc(t)}">#${esc(t)}</a>`;
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const titleOf = (id) => (index.notes[id] || [id])[0];
 
@@ -52,6 +53,7 @@
     const meta = [];
     if (entry.d) meta.push(`<span>${esc(formatDate(entry.d))}</span>`);
     if (id.includes("/")) meta.push(`<span>${esc(id.split("/").slice(0, -1).join(" / "))}</span>`);
+    if (entry.t) meta.push(...entry.t.map(tagHTML));
     if (index.source && !entry.g) meta.push(`<a href="${esc(index.source + id + ".md")}" target="_blank" rel="noopener">Source ↗</a>`);
     const back = entry.b || [];
     const backHTML = back.length
@@ -244,6 +246,12 @@
     const a = e.target.closest("a");
     if (!a) return;
     if (a.classList.contains("missing")) { e.preventDefault(); return; }
+    if (a.dataset.tag && searchEl && !(e.metaKey || e.ctrlKey || e.shiftKey)) {
+      e.preventDefault();
+      hidePreview();
+      searchFor("tag:#" + a.dataset.tag);
+      return;
+    }
     const id = a.dataset.id;
     if (!id || e.metaKey || e.ctrlKey || e.shiftKey) return;
     e.preventDefault();
@@ -404,14 +412,28 @@
     return (start > lineStart ? "…" : "") + highlight(raw.slice(start, end), terms) + (end < lineEnd ? "…" : "");
   }
 
+  // "tag:#name", "tag:name" and "#name" filter by tag; a tag also matches
+  // the tags nested under it (#by matches #by/claude). The rest is text.
+  function parseQuery(q) {
+    const tags = [], terms = [];
+    for (const w of fold(q).split(/\s+/)) {
+      const m = w.match(/^(?:tag:#?|#)(.+?)\/*$/);
+      if (m) tags.push(m[1]);
+      else if (w) terms.push(w);
+    }
+    return { tags, terms, phrase: terms.join(" ") };
+  }
+  const tagMatches = (have, want) => have === want || have.startsWith(want + "/");
+
   function search(q) {
-    const terms = fold(q).split(/\s+/).filter(Boolean);
-    const phrase = terms.join(" ");
+    const { tags, terms, phrase } = parseQuery(q);
     const hits = [];
     for (const d of docs) {
+      if (tags.length && !tags.every((w) => d.tagsFold.some((t) => tagMatches(t, w)))) continue;
       const { tf, f, pf } = d;
       let score;
-      if (tf === phrase) score = 0;
+      if (!terms.length) score = 0;
+      else if (tf === phrase) score = 0;
       else if (tf.startsWith(phrase)) score = 1;
       else if (tf.includes(phrase)) score = 2;
       else if (terms.every((w) => tf.includes(w))) score = 3;
@@ -421,7 +443,7 @@
       hits.push([score, d]);
     }
     hits.sort((a, b) => a[0] - b[0] || b[1].back - a[1].back || a[1].title.localeCompare(b[1].title));
-    return { terms, phrase, hits };
+    return { tags, terms, phrase, hits };
   }
 
   function navTree(nodes) {
@@ -437,13 +459,13 @@
     active = -1;
     searchInput.removeAttribute("aria-activedescendant");
     if (!q) {
-      searchPanel.innerHTML = navHTML
+      searchPanel.innerHTML = (navHTML
         ? `<div class="search-head">Contents</div><nav class="search-nav" aria-label="Contents">${navHTML}</nav>`
-        : `<p class="search-note">Type to search ${docs.length.toLocaleString()} notes.</p>`;
+        : `<p class="search-note">Type to search ${docs.length.toLocaleString()} notes.</p>`) + tagsHTML;
       markOpenLinks();
       return;
     }
-    const { terms, phrase, hits } = search(q);
+    const { tags, terms, phrase, hits } = search(q);
     const status = fullText === null ? `<p class="search-note">Matching titles and first paragraphs; loading the full text…</p>` : "";
     if (!hits.length) {
       searchPanel.innerHTML = `<p class="search-empty">No notes match “${esc(q)}”.</p>${status}`;
@@ -451,16 +473,18 @@
     }
     searchPanel.innerHTML = `<ul class="search-hits" role="listbox" aria-label="Search results">${hits.slice(0, MAX_HITS).map(([, d], i) => {
       const folder = d.id.includes("/") ? d.id.split("/").slice(0, -1).join(" / ") : "";
-      const snip = snippet(d, terms, phrase);
+      const matched = d.tags.filter((t, k) => tags.some((w) => tagMatches(d.tagsFold[k], w)));
+      // With only tags asked for, show where the note uses the tag.
+      const snip = terms.length ? snippet(d, terms, phrase) : snippet(d, matched.map((t) => "#" + fold(t)), "#" + fold(matched[0] || ""));
       return `<li role="option" id="search-hit-${i}"><a class="search-hit" href="notes/${esc(d.id)}.html" data-id="${esc(d.id)}" tabindex="-1">
-        <span class="hit-title">${highlight(d.title, terms)}</span>${folder ? `<span class="hit-path">${esc(folder)}</span>` : ""}
+        <span class="hit-title">${highlight(d.title, terms)}</span>${folder ? `<span class="hit-path">${esc(folder)}</span>` : ""}${matched.map((t) => `<span class="hit-tag">#${esc(t)}</span>`).join("")}
         ${snip ? `<span class="hit-snippet">${snip}</span>` : ""}</a></li>`;
     }).join("")}</ul>${hits.length > MAX_HITS ? `<p class="search-note">${MAX_HITS} of ${hits.length.toLocaleString()} notes shown. Add a word to narrow it down.</p>` : ""}${status}`;
     markOpenLinks();
     setActive(0);
   }
 
-  const panelLinks = () => Array.from(searchPanel.querySelectorAll("a[data-id]")).filter((a) => a.offsetParent !== null);
+  const panelLinks = () => Array.from(searchPanel.querySelectorAll("a[data-id], a[data-tag]")).filter((a) => a.offsetParent !== null);
   function setActive(i) {
     const links = panelLinks();
     searchPanel.querySelector(".is-active")?.classList.remove("is-active");
@@ -495,7 +519,41 @@
     else { active = -1; searchInput.removeAttribute("aria-activedescendant"); }
   }
 
-  function choose(id) {
+  // Every tag in the garden, with the namespaces above nested ones, and how
+  // many notes carry each.
+  let tagsHTML = "";
+  function buildTags() {
+    const counts = new Map(); // folded tag -> [spelling, notes]
+    for (const d of docs) {
+      const seen = new Set();
+      d.tags.forEach((t) => {
+        const parts = t.split("/");
+        for (let k = 1; k <= parts.length; k++) {
+          const name = parts.slice(0, k).join("/"), key = fold(name);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const c = counts.get(key) || [name, 0];
+          c[1]++;
+          counts.set(key, c);
+        }
+      });
+    }
+    if (!counts.size) return "";
+    const list = [...counts.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+    return `<div class="search-head">Tags</div><div class="search-tags">${list.map(([, [name, n]]) =>
+      `<a class="tag" href="index.html?q=${encodeURIComponent("tag:#" + name)}" data-tag="${esc(name)}" tabindex="-1">#${esc(name)}<span class="tag-count">${n}</span></a>`).join("")}</div>`;
+  }
+
+  function searchFor(q) {
+    searchInput.value = q;
+    if (document.activeElement === searchInput) { setPanel(true); renderPanel(); }
+    else searchInput.focus(); // opens the panel
+    searchInput.setSelectionRange(q.length, q.length);
+  }
+
+  function choose(a) {
+    if (a.dataset.tag) { searchFor("tag:#" + a.dataset.tag); return; }
+    const id = a.dataset.id;
     setPanel(false);
     searchInput.blur();
     stack = [{ id }];
@@ -513,7 +571,7 @@
         setActive(active < 0 && e.key === "ArrowUp" ? -1 : active + (e.key === "ArrowDown" ? 1 : -1));
       } else if (e.key === "Enter") {
         const a = panelLinks()[Math.max(0, active)];
-        if (a) { e.preventDefault(); choose(a.dataset.id); }
+        if (a) { e.preventDefault(); choose(a); }
       } else if (e.key === "Escape") {
         e.preventDefault();
         setPanel(false);
@@ -524,10 +582,10 @@
       if (!searchEl.contains(e.relatedTarget)) setPanel(false);
     });
     searchPanel.addEventListener("click", (e) => {
-      const a = e.target.closest("a[data-id]");
+      const a = e.target.closest("a[data-id], a[data-tag]");
       if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; // new tab: the plain page
       e.preventDefault();
-      choose(a.dataset.id);
+      choose(a);
     });
     addEventListener("keydown", (e) => {
       if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey && !/input|textarea|select/i.test(document.activeElement?.tagName) && !document.activeElement?.isContentEditable) {
@@ -551,9 +609,16 @@
     navHTML = index.nav && index.nav.length ? navTree(index.nav) : "";
     docs = Object.entries(index.notes)
       .filter(([id]) => !(index.generated_home && id === index.home))
-      .map(([id, [title, , excerpt, back]]) => ({ id, title, tf: fold(title), pf: fold(id), back, raw: excerpt || "", f: fold(excerpt || "") }));
+      .map(([id, [title, , excerpt, back, tags = []]]) => ({
+        id, title, tf: fold(title), pf: fold(id), back, raw: excerpt || "", f: fold(excerpt || ""), tags, tagsFold: tags.map(fold),
+      }));
+    tagsHTML = buildTags();
+    // index.html?q=… (how tags link from the plain note pages) opens a search.
+    const q = new URLSearchParams(location.search).get("q");
+    if (q) history.replaceState(null, "", location.pathname + location.hash);
     const fromHash = readHash();
     stack = (fromHash.length ? fromHash : [index.home]).map((id) => ({ id }));
     render();
+    if (q && searchEl) searchFor(q);
   })();
 })();

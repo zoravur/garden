@@ -18,6 +18,7 @@
 </header>
 <main class="static-wrap">
   <h1 class="pane-title">{{.Title}}</h1>
+  {{if .Tags}}<div class="pane-meta">{{range .Tags}}<a class="tag" href="{{tagHref .}}">#{{.}}</a>{{end}}</div>{{end}}
   <article class="note">{{.Body}}</article>
   {{if .Back}}<section class="backlinks">
     <h2>Links to this note</h2>

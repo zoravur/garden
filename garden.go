@@ -20,12 +20,15 @@ type Note struct {
 	HTML        string         // rendered body; links are relative to the site root
 	Excerpt     string         // plain text of the first paragraph, trimmed
 	Text        string         // plain text of the whole body, one block per line, code included
+	Tags        []string       // #tags in the body and `tags:` in frontmatter, without the #, sorted
 	Links       []Link         // outgoing links to other published notes, in document order
 	Assets      []string       // vault paths of images and files the note uses
 	Broken      []string       // link targets that match no note or file
 	HasCode     bool           // contains a code block
 	HasMath     bool           // contains math, rendered in the browser with KaTeX
 	Generated   bool           // made by garden (the index page), not read from the vault
+
+	metaTags []string // frontmatter tags that don't appear in the body; shown with the title
 }
 
 // Link is an edge from one note to another, with the text around it.

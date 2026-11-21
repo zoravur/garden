@@ -72,6 +72,11 @@ body { font-size: 15.5px; line-height: 1.6; }
 .note a.missing, .note .private { color: var(--redlink); text-decoration: none; cursor: default; }
 .note a.missing:hover, .note .private:hover { color: var(--redlink-hover); text-decoration: underline; }
 
+/* tags: grey labels with link-blue text */
+.tag, .note a.tag { border-radius: 2px; background: #eaecf0; font-family: var(--f-body); font-weight: 400; letter-spacing: 0; }
+.tag:hover, .note a.tag:hover { background: #dfe3e8; color: var(--accent-hover); text-decoration: none; }
+.pane-meta a.tag:hover, .search-tags .tag.is-active { background: #dfe3e8; color: var(--accent-hover); }
+
 /* code and tables in the "wikitable" manner */
 .note code { background: var(--code-bg); border: 1px solid #eaecf0; border-radius: 2px; color: #000; padding: 1px 4px; }
 .note pre { background: var(--code-bg); border: 1px solid #eaecf0; border-radius: 2px; }

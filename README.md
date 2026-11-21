@@ -6,7 +6,7 @@
 Turn a folder of markdown notes into a knowledge garden: a static site where links open notes in **stacked panes**, side by side, in the style of [Andy Matuschak's working notes](https://notes.andymatuschak.org/). Every note lists its **backlinks**, and hovering a link shows a **preview** of the linked note, scrolled to the linked section.
 
 - A single Go binary, also usable as a library.
-- A search box in the top bar matches note titles and full text. With nothing typed, it shows the contents tree. Choosing a note there starts a fresh trail.
+- A search box in the top bar matches note titles and full text, and filters by tag with `tag:#name`. With nothing typed, it shows the contents tree and every tag. Choosing a note there starts a fresh trail.
 - Reads Obsidian vaults (`[[wikilinks]]`) and MkDocs sites (`[text](note.md)`, admonitions, `mkdocs.yml` nav).
 - Renders LaTeX math with a bundled copy of KaTeX, so it works offline.
 - Parses and renders notes in parallel: 636 notes in about 0.3 s.
@@ -72,6 +72,7 @@ With `public_only: true`, private notes never reach the output. A link to a priv
 | `[label](other-note.md#heading)` | Resolved relative to the note, then from the vault root, then **by file name anywhere in the vault**. Notes can move between folders without breaking links. |
 | `[[Note]]`, `[[Note\|label]]`, `[[Note#Heading]]`, `![[image.png]]` | Obsidian wikilinks. Links inside code are left alone. |
 | `!!! note "Title"`, `??? warning`, `???+ tip` | MkDocs Material admonitions. The `???` forms are collapsible. |
+| `#tag`, `#area/topic`, frontmatter `tags:` | Obsidian tags, shown as chips. Clicking one searches for `tag:#name`, which also finds nested tags (`#area` finds `#area/topic`). Tags must start a word and contain a non-digit, so `C#`, `#123` and URL fragments stay text. A line of tags at the top of a note isn't used as its excerpt. Frontmatter tags appear under the title. |
 | Frontmatter `title`, `date`, `public` | Without a `title`, the leading `#` heading is used, then the file name (underscores become spaces; hyphens are kept, so `2026-10-22` stays a date). |
 | GFM tables, task lists, footnotes, definition lists | Rendered by [goldmark](https://github.com/yuin/goldmark). |
 | Fenced code with a language | Highlighted in the browser. |
@@ -101,7 +102,7 @@ stats, err := g.Write(ctx, "dist")                          // write the site la
 
 - **Notes come from any `fs.FS`:** a directory, an `embed.FS`, a zip archive, or an in-memory `fstest.MapFS`.
 - **`Load` and `Write` are separate.** You can index notes or validate links without producing a site, and loading honours context cancellation.
-- **What each note carries:** a `Note` has its rendered HTML, plain `Text`, frontmatter, excerpt and outgoing `Link`s. Each link records the heading it sits under and the sentence around it.
+- **What each note carries:** a `Note` has its rendered HTML, plain `Text`, `Tags`, frontmatter, excerpt and outgoing `Link`s. Each link records the heading it sits under and the sentence around it.
 - **Backlinks:** `Garden.Backlinks` returns the inverted edges, sorted.
 
 Full API docs are at [pkg.go.dev](https://pkg.go.dev/github.com/zoravur/garden).
